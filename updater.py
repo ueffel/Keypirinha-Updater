@@ -29,7 +29,7 @@ class Updater(kp.Plugin):
         if flags & kp.Events.NETOPTIONS:
             self._url_opener = kpn.build_urllib_opener()
 
-    def on_start(self):
+    def on_catalog(self):
         self.set_actions(self.UPDATE_COMMAND_CAT, [
             self.create_action(
                 name=self.NO_NAG_ACTION,
