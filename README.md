@@ -12,7 +12,6 @@ One of the following to unpack the new keypirinha version (7z file):
 * [WinRAR](https://www.rarlab.com/) (normally installed)
 * `winrar.exe` in `%PATH%`
 
-
 ## Usage
 
 The `Update Keypirinha to <version>` item downloads the new version and replaces the running version

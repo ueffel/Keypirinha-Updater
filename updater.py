@@ -22,14 +22,11 @@ class Updater(kp.Plugin):
         self._no_nag = False
         self._kind = self.DEFAULT_KIND
 
-    def on_events(self, flags):
-        if flags & kp.Events.PACKCONFIG:
-            self._read_config()
+    def on_start(self):
+        self._read_config()
 
-        if flags & kp.Events.NETOPTIONS:
-            self._url_opener = kpn.build_urllib_opener()
+        self._cleanup()
 
-    def on_catalog(self):
         self.set_actions(self.UPDATE_COMMAND_CAT, [
             self.create_action(
                 name=self.NO_NAG_ACTION,
@@ -43,17 +40,33 @@ class Updater(kp.Plugin):
             )
         ])
 
-        self._read_config()
-        self._cleanup()
+    def on_events(self, flags):
+        if flags & kp.Events.PACKCONFIG:
+            self._read_config()
+            self.on_catalog()
 
+        if flags & kp.Events.NETOPTIONS:
+            self._url_opener = kpn.build_urllib_opener()
+
+    def on_catalog(self):
         self._newest_version = self._get_newest_version()
         if self.compare_version(self._newest_version, kp.version()):
             self.info("There is a new version:", ".".join(str(n) for n in self._newest_version))
+            if self._no_nag:
+                items = [self.create_item(
+                    category=self.UPDATE_COMMAND_CAT,
+                    label="Update Keypirinha to " + ".".join(str(n) for n in self._newest_version),
+                    short_desc="Perform the update to the new version. A restart of keypirinha will occur.",
+                    target=self.UPDATE_COMMAND,
+                    args_hint=kp.ItemArgsHint.FORBIDDEN,
+                    hit_hint=kp.ItemHitHint.IGNORE
+                )]
+                self.set_catalog(items)
         else:
             self.info(kp.name(), "is up to date.")
 
     def on_suggest(self, user_input, items_chain):
-        if self.compare_version(self._newest_version, kp.version()):
+        if self.compare_version(self._newest_version, kp.version()) and not self._no_nag:
             items = [self.create_item(
                 category=self.UPDATE_COMMAND_CAT,
                 label="Update Keypirinha to " + ".".join(str(n) for n in self._newest_version),
@@ -62,15 +75,13 @@ class Updater(kp.Plugin):
                 args_hint=kp.ItemArgsHint.FORBIDDEN,
                 hit_hint=kp.ItemHitHint.IGNORE
             )]
-            if self._no_nag:
-                self.set_suggestions(items)
-            else:
-                self.set_suggestions(items, kp.Match.ANY, kp.Sort.NONE)
+            self.set_suggestions(items, kp.Match.ANY, kp.Sort.NONE)
 
     def on_execute(self, item, action):
         if item.target() == self.UPDATE_COMMAND:
             if action and action.name() == self.NO_NAG_ACTION:
                 self._no_nag = True
+                self.on_catalog()
                 return
             if self._newest_release is not None:
                 for asset in self._newest_release["assets"]:
